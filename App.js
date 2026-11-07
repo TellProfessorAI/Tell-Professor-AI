@@ -1,5 +1,6 @@
 
 import React, { useState } from "react";
+
 import {
   View,
   Text,
@@ -13,7 +14,10 @@ import {
   ActivityIndicator
 } from "react-native";
 
-const API_URL = "https://script.google.com/macros/s/AKfycbyF5JihmoxmYeYD2v2lzA4cvPdbkPYCc35QziISCveazCN4ScBMFJ-e0Dl6gifWtoTf5w/exec";
+const API_URL =
+  Platform.OS === "web"
+    ? "/.netlify/functions/chat"
+    : "https://script.google.com/macros/s/AKfycbyF5JihmoxmYeYD2v2lzA4cvPdbkPYCc35QziISCveazCN4ScBMFJ-e0Dl6gifWtoTf5w/exec";
 
 const tools = [
   "Chat",
@@ -56,17 +60,27 @@ export default function App() {
         })
       });
 
+      if (!response.ok) {
+        throw new Error(
+          "Server error: " + response.status
+        );
+      }
+
       const data = await response.json();
 
-      if (data.error) {
-        throw new Error(data.error);
+      if (data.error || data.success === false) {
+        throw new Error(data.error || "AI request failed");
+      }
+
+      if (!data.reply) {
+        throw new Error("No response received from AI");
       }
 
       setMessages(prev => [
         ...prev,
         {
           role: "ai",
-          text: data.reply || "No response received."
+          text: data.reply
         }
       ]);
 
@@ -78,6 +92,7 @@ export default function App() {
           text: "Connection error: " + error.message
         }
       ]);
+
     } finally {
       setLoading(false);
     }
@@ -86,16 +101,28 @@ export default function App() {
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      behavior={
+        Platform.OS === "ios"
+          ? "padding"
+          : undefined
+      }
     >
       <StatusBar barStyle="light-content" />
 
       <View style={styles.header}>
         <View>
-          <Text style={styles.logo}>Tell Professor</Text>
-          <Text style={styles.subtitle}>AI ASSISTANT</Text>
+          <Text style={styles.logo}>
+            Tell Professor
+          </Text>
+
+          <Text style={styles.subtitle}>
+            AI ASSISTANT
+          </Text>
         </View>
-        <Text style={styles.online}>● ONLINE</Text>
+
+        <Text style={styles.online}>
+          ● ONLINE
+        </Text>
       </View>
 
       <ScrollView
@@ -108,24 +135,30 @@ export default function App() {
             key={tool}
             style={[
               styles.tool,
-              selectedTool === tool && styles.activeTool
+              selectedTool === tool &&
+                styles.activeTool
             ]}
             onPress={() => setSelectedTool(tool)}
           >
-            <Text style={styles.toolText}>{tool}</Text>
+            <Text style={styles.toolText}>
+              {tool}
+            </Text>
           </TouchableOpacity>
         ))}
       </ScrollView>
 
       <ScrollView
         style={styles.chat}
-        contentContainerStyle={{ paddingBottom: 20 }}
+        contentContainerStyle={{
+          paddingBottom: 20
+        }}
       >
         {messages.length === 0 && (
           <View style={styles.welcome}>
             <Text style={styles.welcomeTitle}>
               Welcome to Tell Professor AI
             </Text>
+
             <Text style={styles.welcomeText}>
               Your intelligent assistant is ready.
               Ask anything to get started!
@@ -144,8 +177,11 @@ export default function App() {
             ]}
           >
             <Text style={styles.messageLabel}>
-              {message.role === "user" ? "YOU" : "PROFESSOR AI"}
+              {message.role === "user"
+                ? "YOU"
+                : "PROFESSOR AI"}
             </Text>
+
             <Text style={styles.messageText}>
               {message.text}
             </Text>
@@ -155,6 +191,7 @@ export default function App() {
         {loading && (
           <View style={styles.loading}>
             <ActivityIndicator color="#a78bfa" />
+
             <Text style={styles.loadingText}>
               Professor AI is thinking...
             </Text>
@@ -173,11 +210,16 @@ export default function App() {
         />
 
         <TouchableOpacity
-          style={styles.sendButton}
+          style={[
+            styles.sendButton,
+            loading && styles.disabledButton
+          ]}
           onPress={sendMessage}
-          disabled={loading}
+          disabled={loading || !input.trim()}
         >
-          <Text style={styles.sendText}>➤</Text>
+          <Text style={styles.sendText}>
+            ➤
+          </Text>
         </TouchableOpacity>
       </View>
 
@@ -194,31 +236,37 @@ const styles = StyleSheet.create({
     backgroundColor: "#090b1b",
     paddingTop: 45
   },
+
   header: {
     padding: 20,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center"
   },
+
   logo: {
     color: "#ffffff",
     fontSize: 25,
     fontWeight: "bold"
   },
+
   subtitle: {
     color: "#a78bfa",
     fontSize: 10,
     letterSpacing: 3,
     marginTop: 4
   },
+
   online: {
     color: "#4ade80",
     fontSize: 11
   },
+
   tools: {
     maxHeight: 55,
     paddingLeft: 12
   },
+
   tool: {
     backgroundColor: "#171a32",
     paddingHorizontal: 16,
@@ -227,67 +275,81 @@ const styles = StyleSheet.create({
     marginHorizontal: 5,
     height: 42
   },
+
   activeTool: {
     backgroundColor: "#7046d3"
   },
+
   toolText: {
     color: "#ffffff",
     fontSize: 12
   },
+
   chat: {
     flex: 1,
     padding: 15
   },
+
   welcome: {
     marginTop: 80,
     alignItems: "center"
   },
+
   welcomeTitle: {
     color: "#ffffff",
     fontSize: 22,
     fontWeight: "bold",
     textAlign: "center"
   },
+
   welcomeText: {
     color: "#aaaac0",
     textAlign: "center",
     marginTop: 12,
     lineHeight: 22
   },
+
   message: {
     padding: 15,
     borderRadius: 15,
     marginBottom: 12,
     maxWidth: "90%"
   },
+
   userMessage: {
     backgroundColor: "#49318c",
     alignSelf: "flex-end"
   },
+
   aiMessage: {
     backgroundColor: "#191d36",
     alignSelf: "flex-start"
   },
+
   messageLabel: {
     color: "#b9a5ff",
     fontSize: 10,
     fontWeight: "bold",
     marginBottom: 7
   },
+
   messageText: {
     color: "#ffffff",
     fontSize: 15,
     lineHeight: 22
   },
+
   loading: {
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
     padding: 12
   },
+
   loadingText: {
     color: "#aaaac0"
   },
+
   inputArea: {
     flexDirection: "row",
     alignItems: "center",
@@ -296,12 +358,14 @@ const styles = StyleSheet.create({
     padding: 8,
     borderRadius: 18
   },
+
   input: {
     flex: 1,
     color: "#ffffff",
     padding: 12,
     maxHeight: 100
   },
+
   sendButton: {
     backgroundColor: "#7046d3",
     width: 45,
@@ -310,10 +374,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center"
   },
+
+  disabledButton: {
+    opacity: 0.5
+  },
+
   sendText: {
     color: "#ffffff",
     fontSize: 22
   },
+
   footer: {
     color: "#65657d",
     textAlign: "center",
